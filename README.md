@@ -330,6 +330,24 @@ Configure no painel:
 - `COMPOSIO_AUTH_CONFIG_GOOGLE_CALENDAR`
 - opcionais do Composio para Gmail, Slack, Twilio e Notion
 
+### Build Args no EasyPanel
+
+Como o `Next.js` precisa dos valores públicos do Supabase durante o `next build`, configure também estes build args no serviço:
+
+- `NEXT_PUBLIC_APP_URL`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `GIT_SHA`
+
+Exemplo:
+
+```text
+NEXT_PUBLIC_APP_URL=https://seu-dominio.com
+NEXT_PUBLIC_SUPABASE_URL=https://uzygtfotbqaaowunkhtz.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=seu_anon_key
+GIT_SHA=b9e13d40020af6abf447b25b657ca01827b7d2a4
+```
+
 ### Requisitos de produção
 
 - HTTPS ativo
