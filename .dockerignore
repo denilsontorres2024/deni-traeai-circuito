@@ -1,0 +1,14 @@
+.git
+.gitignore
+.next
+node_modules
+npm-debug.log
+coverage
+dist
+.env
+.env.*.local
+.vercel
+.trae
+.dbg
+Dockerfile*
+README.md

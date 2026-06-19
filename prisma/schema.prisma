@@ -1,0 +1,235 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RiskLevel {
+  low
+  medium
+  high
+}
+
+enum InputMode {
+  webcam
+  image
+  video
+}
+
+enum IntegrationProvider {
+  google_calendar
+  gmail
+  slack
+  telegram
+  google_sheets
+  notion
+  airtable
+  twilio
+}
+
+enum IntegrationStatus {
+  disconnected
+  connecting
+  connected
+  error
+}
+
+enum AutomationTrigger {
+  after_analysis
+  daily_plan
+  before_meeting
+  after_meeting
+  low_score_alert
+  weekly_summary
+  monthly_summary
+}
+
+enum AutomationStatus {
+  pending
+  running
+  completed
+  failed
+}
+
+enum NotificationChannel {
+  gmail
+  slack
+  telegram
+  whatsapp
+}
+
+enum NotificationStatus {
+  queued
+  sent
+  delivered
+  failed
+}
+
+model Profile {
+  id               String   @id @db.Uuid
+  email            String?  @unique
+  fullName         String?  @map("full_name")
+  avatarUrl        String?  @map("avatar_url")
+  jobTitle         String?  @map("job_title")
+  goal             String?
+  timezone         String   @default("UTC")
+  discomfortAreas  String[] @default([]) @map("discomfort_areas")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("profiles")
+}
+
+model ConnectedApp {
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String            @map("user_id") @db.Uuid
+  provider          IntegrationProvider
+  status            IntegrationStatus @default(disconnected)
+  accountLabel      String?           @map("account_label")
+  externalAccountId String?           @map("external_account_id")
+  scopes            String[]          @default([])
+  lastSyncedAt      DateTime?         @map("last_synced_at") @db.Timestamptz(6)
+  metadata          Json              @default("{}")
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([userId, provider])
+  @@index([userId, status])
+  @@map("connected_apps")
+}
+
+model PostureAnalysis {
+  id             String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String     @map("user_id") @db.Uuid
+  inputMode      InputMode  @map("input_mode")
+  score          Int
+  riskLevel      RiskLevel  @map("risk_level")
+  confidence     Decimal    @db.Decimal(5, 2)
+  summary        String
+  diagnosis      String
+  detectedIssues String[]   @default([]) @map("detected_issues")
+  recommendations String[]  @default([])
+  exercises      String[]   @default([])
+  dailyPlan      String[]   @default([]) @map("daily_plan")
+  metrics        Json       @default("[]")
+  landmarks      Json       @default("[]")
+  mediaUrl       String?    @map("media_url")
+  rawAiResponse  Json?      @map("raw_ai_response")
+  analyzedAt     DateTime   @default(now()) @map("analyzed_at") @db.Timestamptz(6)
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([userId, analyzedAt(sort: Desc)])
+  @@map("posture_analysis")
+}
+
+model CalendarInsight {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  insightDate     DateTime @map("insight_date") @db.Date
+  longMeetings    Int      @default(0) @map("long_meetings")
+  consecutiveMeetings Int  @default(0) @map("consecutive_meetings")
+  seatedMinutes   Int      @default(0) @map("seated_minutes")
+  freeMinutes     Int      @default(0) @map("free_minutes")
+  summary         String
+  rawCalendar     Json     @default("{}") @map("raw_calendar")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([userId, insightDate])
+  @@map("calendar_insights")
+}
+
+model DailyPlan {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String    @map("user_id") @db.Uuid
+  postureAnalysisId String?  @map("posture_analysis_id") @db.Uuid
+  planDate         DateTime  @map("plan_date") @db.Date
+  title            String
+  summary          String
+  priority         String
+  blocks           Json      @default("[]")
+  completedAt      DateTime? @map("completed_at") @db.Timestamptz(6)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([userId, planDate(sort: Desc)])
+  @@map("daily_plans")
+}
+
+model AutomationRule {
+  id         String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String            @map("user_id") @db.Uuid
+  triggerType AutomationTrigger @map("trigger_type")
+  isEnabled  Boolean           @default(true) @map("is_enabled")
+  priority   Int               @default(1)
+  config     Json              @default("{}")
+  createdAt  DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([userId, triggerType])
+  @@map("automation_rules")
+}
+
+model AutomationRun {
+  id            String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String           @map("user_id") @db.Uuid
+  automationRuleId String?       @map("automation_rule_id") @db.Uuid
+  triggerType   AutomationTrigger @map("trigger_type")
+  status        AutomationStatus
+  payload       Json             @default("{}")
+  result        Json             @default("{}")
+  errorMessage  String?          @map("error_message")
+  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("automation_runs")
+}
+
+model Notification {
+  id            String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String             @map("user_id") @db.Uuid
+  channel       NotificationChannel
+  status        NotificationStatus @default(queued)
+  subject       String?
+  message       String
+  metadata      Json               @default("{}")
+  sentAt        DateTime?          @map("sent_at") @db.Timestamptz(6)
+  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([userId, status, createdAt(sort: Desc)])
+  @@map("notifications")
+}
+
+model ExerciseHistory {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  dailyPlanId     String?   @map("daily_plan_id") @db.Uuid
+  exerciseName    String    @map("exercise_name")
+  durationMinutes Int       @default(0) @map("duration_minutes")
+  source          String
+  completedAt     DateTime  @default(now()) @map("completed_at") @db.Timestamptz(6)
+  notes           String?
+
+  @@index([userId, completedAt(sort: Desc)])
+  @@map("exercise_history")
+}
+
+model UserPreference {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId             String   @unique @map("user_id") @db.Uuid
+  reminderChannelPriority String[] @default([]) @map("reminder_channel_priority")
+  workdayStart       String?  @map("workday_start")
+  workdayEnd         String?  @map("workday_end")
+  preferredBreakMinutes Int   @default(5) @map("preferred_break_minutes")
+  seatedAlertMinutes Int      @default(50) @map("seated_alert_minutes")
+  openAiGoal         String?  @map("openai_goal")
+  settings           Json     @default("{}")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("user_preferences")
+}
